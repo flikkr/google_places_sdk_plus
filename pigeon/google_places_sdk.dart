@@ -18,6 +18,9 @@ abstract class PlacesHostApi {
 
   @async
   FetchPlaceResponse fetchPlace(FetchPlaceRequest request);
+
+  @async
+  SearchByTextResponse searchByText(SearchByTextRequest request);
 }
 
 enum PlaceField {
@@ -101,6 +104,38 @@ class FetchPlaceResponse {
   Place place;
 
   FetchPlaceResponse(this.place);
+}
+
+class SearchByTextRequest {
+  String textQuery;
+  List<PlaceField> placeFields;
+  String? includedType;
+  int? maxResultCount;
+  double? minRating;
+  bool? isOpenNow;
+  List<int?>? priceLevels;
+  bool? strictTypeFiltering;
+  LatLngBounds? locationBias;
+  LatLngBounds? locationRestriction;
+
+  SearchByTextRequest({
+    required this.textQuery,
+    required this.placeFields,
+    this.includedType,
+    this.maxResultCount,
+    this.minRating,
+    this.isOpenNow,
+    this.priceLevels,
+    this.strictTypeFiltering,
+    this.locationBias,
+    this.locationRestriction,
+  });
+}
+
+class SearchByTextResponse {
+  List<Place?> places;
+
+  SearchByTextResponse(this.places);
 }
 
 enum BusinessStatus { OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_places_sdk_plus/google_places_sdk_plus.dart';
 
@@ -33,6 +34,7 @@ class _HomePageState extends State<HomePage> {
   final _placeIdController = TextEditingController(
     text: 'ChIJLU7jZClu5kcR4PcOOO6p3I0',
   ); // Google Sydney
+  final _searchQueryController = TextEditingController(text: 'Spicy Food');
   final _places = PlacesHostApi();
   bool _initialized = false;
   bool _loading = false;
@@ -82,15 +84,7 @@ class _HomePageState extends State<HomePage> {
       final response = await _places.fetchPlace(
         FetchPlaceRequest(
           placeId: placeId,
-          placeFields: [
-            PlaceField.ID,
-            PlaceField.DISPLAY_NAME,
-            PlaceField.FORMATTED_ADDRESS,
-            PlaceField.LOCATION,
-            PlaceField.RATING,
-            PlaceField.USER_RATING_COUNT,
-            PlaceField.WEBSITE_URI,
-          ],
+          placeFields: PlaceField.values, // Fetch all fields for raw response
         ),
       );
 
@@ -104,6 +98,126 @@ class _HomePageState extends State<HomePage> {
         _showResultBottomSheet(error: e.toString());
       }
     }
+  }
+
+  Future<void> _searchByText() async {
+    final textQuery = _searchQueryController.text.trim();
+    if (textQuery.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a text query')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final response = await _places.searchByText(
+        SearchByTextRequest(
+          textQuery: textQuery,
+          placeFields: PlaceField.values, // Fetch all fields
+        ),
+      );
+
+      if (mounted) {
+        setState(() => _loading = false);
+        _showSearchResultsBottomSheet(places: response.places);
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+      if (mounted) {
+        _showResultBottomSheet(error: e.toString());
+      }
+    }
+  }
+
+  void _showSearchResultsBottomSheet({required List<Place?> places}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'Found ${places.length} Places',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.separated(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: places.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final place = places[index];
+                  return Card(
+                    elevation: 2,
+                    child: ListTile(
+                      title: Text(
+                        place?.displayName ?? place?.id ?? 'Unknown',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        place?.formattedAddress ?? 'No address',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: place?.rating != null
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    place!.rating!.toString(),
+                                    style: TextStyle(
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showResultBottomSheet(place: place);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showResultBottomSheet({Place? place, String? error}) {
@@ -206,41 +320,38 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 24),
-            TextField(
+            ActionInputField(
+              title: "Fetch Place Details",
               controller: _placeIdController,
-              decoration: InputDecoration(
-                labelText: 'Place ID',
-                hintText: 'e.g., ChIJLU7jZClu5kcR4PcOOO6p3I0',
-                prefixIcon: const Icon(Icons.location_on),
-                border: OutlineInputBorder(
+              label: 'Place ID',
+              hint: 'e.g., ChIJLU7jZClu5kcR4PcOOO6p3I0',
+              icon: Icons.location_on,
+              buttonText: 'Fetch Place Details',
+              buttonIcon: Icons.search,
+              onPressed: _fetchPlace,
+              isLoading: _loading && _initialized,
+              isEnabled: _initialized && !_loading,
+            ),
+            const SizedBox(height: 24),
+            ActionInputField(
+              title: 'Search By Text',
+              controller: _searchQueryController,
+              label: 'Text Query',
+              hint: 'e.g., Spicy Food in Sydney',
+              icon: Icons.search,
+              buttonText: 'Search Place',
+              buttonIcon: Icons.text_fields,
+              onPressed: _searchByText,
+              isLoading: _loading && _initialized,
+              isEnabled: _initialized && !_loading,
+              filledButtonStyle: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.tertiary,
+                foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                enabled: _initialized,
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton.icon(
-                onPressed: (_loading || !_initialized) ? null : _fetchPlace,
-                icon: _loading && _initialized
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.search),
-                label: const Text('Fetch Place Details'),
-                style: FilledButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              loadingColor: Theme.of(context).colorScheme.onTertiary,
             ),
           ],
         ),
@@ -263,6 +374,15 @@ class PlaceResultContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String jsonString;
+    if (error != null) {
+      jsonString = const JsonEncoder.withIndent('  ').convert({'error': error});
+    } else if (place != null) {
+      jsonString = const JsonEncoder.withIndent('  ').convert(place!.toJson());
+    } else {
+      jsonString = '{}';
+    }
+
     return Column(
       children: [
         const SizedBox(height: 8),
@@ -276,109 +396,200 @@ class PlaceResultContent extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          error != null
-              ? 'Error Occurred'
-              : (place?.displayName ?? 'Place Details'),
+          error != null ? 'Error' : 'Raw JSON Response',
           style: Theme.of(
             context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const Divider(),
         Expanded(
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.all(24),
-            children: [
-              if (error != null) ...[
-                const Center(
-                  child: Icon(Icons.error_outline, color: Colors.red, size: 64),
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: SelectableText(
+                jsonString,
+                style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontFamily: 'monospace',
+                  fontSize: 12,
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade100),
-                  ),
-                  child: Text(
-                    error!,
-                    style: TextStyle(
-                      color: Colors.red.shade900,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ] else if (place != null) ...[
-                _buildDetailTile(Icons.info_outline, 'Place ID', place!.id),
-                _buildDetailTile(Icons.title, 'Name', place!.displayName),
-                _buildDetailTile(
-                  Icons.map_outlined,
-                  'Address',
-                  place!.formattedAddress,
-                ),
-                _buildDetailTile(
-                  Icons.star_outline,
-                  'Rating',
-                  place!.rating?.toString(),
-                ),
-                _buildDetailTile(
-                  Icons.people_outline,
-                  'Review Count',
-                  place!.userRatingCount?.toString(),
-                ),
-                _buildDetailTile(Icons.public, 'Website', place!.websiteUri),
-                _buildDetailTile(
-                  Icons.location_on_outlined,
-                  'Coordinate',
-                  place!.location != null
-                      ? '${place!.location!.lat}, ${place!.location!.lng}'
-                      : null,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Raw JSON Response:',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SelectableText(
-                    '{\n'
-                    '  "id": "${place!.id}",\n'
-                    '  "displayName": "${place!.displayName}",\n'
-                    '  "formattedAddress": "${place!.formattedAddress}"\n'
-                    '}',
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildDetailTile(IconData icon, String label, String? value) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.blueGrey),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 12, color: Colors.grey),
-      ),
-      subtitle: Text(
-        value ?? 'N/A',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-      ),
-      contentPadding: EdgeInsets.zero,
+extension PlaceJson on Place {
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'displayName': displayName,
+      'formattedAddress': formattedAddress,
+      'adrFormatAddress': adrFormatAddress,
+      'businessStatus': businessStatus?.name,
+      'location': location != null
+          ? {'lat': location!.lat, 'lng': location!.lng}
+          : null,
+      'rating': rating,
+      'userRatingCount': userRatingCount,
+      'websiteUri': websiteUri,
+      'googleMapsUri': googleMapsUri,
+      'priceLevel': priceLevel,
+      'utcOffsetMinutes': utcOffsetMinutes,
+      'types': types,
+      'viewport': viewport != null
+          ? {
+              'southwest': {
+                'lat': viewport!.southwest.lat,
+                'lng': viewport!.southwest.lng,
+              },
+              'northeast': {
+                'lat': viewport!.northeast.lat,
+                'lng': viewport!.northeast.lng,
+              },
+            }
+          : null,
+      'iconMaskUrl': iconMaskUrl,
+      'iconBackgroundColor': iconBackgroundColor,
+      'plusCode': plusCode != null
+          ? {
+              'globalCode': plusCode!.globalCode,
+              'compoundCode': plusCode!.compoundCode,
+            }
+          : null,
+      'accessibilityOptions': accessibilityOptions != null
+          ? {
+              'wheelchairAccessibleEntrance':
+                  accessibilityOptions!.wheelchairAccessibleEntrance?.name,
+              'wheelchairAccessibleRestroom':
+                  accessibilityOptions!.wheelchairAccessibleRestroom?.name,
+              'wheelchairAccessibleSeating':
+                  accessibilityOptions!.wheelchairAccessibleSeating?.name,
+              'wheelchairAccessibleParking':
+                  accessibilityOptions!.wheelchairAccessibleParking?.name,
+            }
+          : null,
+      'parkingOptions': parkingOptions != null
+          ? {
+              'freeParkingLot': parkingOptions!.freeParkingLot?.name,
+              'paidParkingLot': parkingOptions!.paidParkingLot?.name,
+              'freeStreetParking': parkingOptions!.freeStreetParking?.name,
+              'paidStreetParking': parkingOptions!.paidStreetParking?.name,
+              'valetParking': parkingOptions!.valetParking?.name,
+              'freeGarageParking': parkingOptions!.freeGarageParking?.name,
+              'paidGarageParking': parkingOptions!.paidGarageParking?.name,
+            }
+          : null,
+      'paymentOptions': paymentOptions != null
+          ? {
+              'acceptsCreditCards': paymentOptions!.acceptsCreditCards?.name,
+              'acceptsDebitCards': paymentOptions!.acceptsDebitCards?.name,
+              'acceptsCashOnly': paymentOptions!.acceptsCashOnly?.name,
+              'acceptsNfc': paymentOptions!.acceptsNfc?.name,
+            }
+          : null,
+    };
+  }
+}
+
+class ActionInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final String buttonText;
+  final IconData buttonIcon;
+  final VoidCallback onPressed;
+  final bool isLoading;
+  final bool isEnabled;
+  final ButtonStyle? filledButtonStyle;
+  final Color? loadingColor;
+  final String? title;
+
+  const ActionInputField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.buttonText,
+    required this.buttonIcon,
+    required this.onPressed,
+    required this.isLoading,
+    this.isEnabled = true,
+    this.filledButtonStyle,
+    this.loadingColor,
+    this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (title != null) ...[
+          Row(
+            children: [
+              const Expanded(child: Divider()),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  title!,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            prefixIcon: Icon(icon),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabled: isEnabled || isLoading, // Keep text field visible/readable
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: FilledButton.icon(
+            onPressed: isEnabled ? onPressed : null,
+            icon: isLoading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: loadingColor ?? Colors.white,
+                    ),
+                  )
+                : Icon(buttonIcon),
+            label: Text(buttonText),
+            style:
+                filledButtonStyle ??
+                FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+          ),
+        ),
+      ],
     );
   }
 }

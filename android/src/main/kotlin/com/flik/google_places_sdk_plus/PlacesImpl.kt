@@ -13,7 +13,6 @@ import com.google.android.libraries.places.api.net.FetchPlaceRequest as NativeFe
 import com.google.android.libraries.places.api.net.SearchByTextRequest as NativeSearchByTextRequest
 import com.google.android.libraries.places.api.net.SearchNearbyRequest as NativeSearchNearbyRequest
 import com.google.android.libraries.places.api.net.FetchResolvedPhotoUriRequest as NativeFetchResolvedPhotoUriRequest
-import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 
 class PlacesClientImpl(private val context: Context) : PlacesHostApi {
     companion object {
@@ -224,7 +223,8 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             val client = placesClient
                 ?: throw Exception("Places SDK is not initialized. Call initialize() first.")
 
-            val builder = com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest.builder()
+            val builder =
+                com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest.builder()
 
             request.query?.let { builder.setQuery(it) }
             request.countries?.let { builder.setCountries(it) }
@@ -245,8 +245,16 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
                 )
             }
             request.origin?.let { builder.setOrigin(LatLng(it.lat, it.lng)) }
-            request.typesFilter?.let { builder.setTypesFilter(it) }
-            
+            request.typesFilter?.let { filters ->
+                builder.setTypesFilter(filters.map { type ->
+                    when (type) {
+                        PlaceTypes.CITIES -> "(cities)"
+                        PlaceTypes.REGIONS -> "(regions)"
+                        else -> type.name.lowercase()
+                    }
+                })
+            }
+
             val sessionToken = AutocompleteSessionTokenCache.getOrCreate(request.sessionToken)
             builder.setSessionToken(sessionToken)
 

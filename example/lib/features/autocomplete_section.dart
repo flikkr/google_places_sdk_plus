@@ -99,12 +99,12 @@ class _AutocompleteSectionState extends State<AutocompleteSection> {
           ),
           loadingColor: Colors.white,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: Row(
@@ -114,7 +114,6 @@ class _AutocompleteSectionState extends State<AutocompleteSection> {
               const Text(
                 'Session:',
                 style: TextStyle(
-                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: Colors.grey,
                 ),
@@ -124,7 +123,6 @@ class _AutocompleteSectionState extends State<AutocompleteSection> {
                 child: Text(
                   _sessionToken ?? 'None',
                   style: const TextStyle(
-                    fontSize: 12,
                     fontFamily: 'monospace',
                     color: Colors.blueGrey,
                   ),
@@ -133,7 +131,7 @@ class _AutocompleteSectionState extends State<AutocompleteSection> {
               ),
               IconButton(
                 onPressed: _generateNewSessionToken,
-                icon: const Icon(Icons.refresh, size: 16),
+                icon: const Icon(Icons.refresh),
                 tooltip: 'Rotate Session Token',
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,

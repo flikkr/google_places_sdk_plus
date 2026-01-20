@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_places_sdk_plus/google_places_sdk_plus.dart';
-import '../components/action_input_field.dart';
+import 'package:google_places_sdk_plus_example/components/action_input_field.dart';
 
 class FetchPhotoSection extends StatefulWidget {
   final PlacesHostApi placesApi;

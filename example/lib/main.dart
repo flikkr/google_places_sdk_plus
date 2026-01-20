@@ -158,7 +158,7 @@ class _HomePageState extends State<HomePage> {
           spacing: 24,
           children: [
             InitializationCard(
-              apiKey: 'AIzaSyA7hzJgNC_KaYY8gkvfOqL7dO433XHkJpY',
+              apiKey: const String.fromEnvironment('GOOGLE_PLACES_API_KEY'),
               placesApi: _places,
               onInitializationChanged: (value) {
                 setState(() {

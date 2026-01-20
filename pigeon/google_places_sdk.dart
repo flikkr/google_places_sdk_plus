@@ -21,6 +21,9 @@ abstract class PlacesHostApi {
 
   @async
   SearchByTextResponse searchByText(SearchByTextRequest request);
+
+  @async
+  SearchByNearbyResponse searchByNearby(SearchByNearbyRequest request);
 }
 
 enum PlaceField {
@@ -117,6 +120,7 @@ class SearchByTextRequest {
   bool? strictTypeFiltering;
   LatLngBounds? locationBias;
   LatLngBounds? locationRestriction;
+  RankPreference? rankPreference;
 
   SearchByTextRequest({
     required this.textQuery,
@@ -137,6 +141,36 @@ class SearchByTextResponse {
 
   SearchByTextResponse(this.places);
 }
+
+class SearchByNearbyRequest {
+  CircularBounds locationRestriction;
+  List<PlaceField> placeFields;
+  List<String?>? includedTypes;
+  List<String?>? excludedTypes;
+  List<String?>? includedPrimaryTypes;
+  List<String?>? excludedPrimaryTypes;
+  int? maxResultCount;
+  SearchByNearbyRankPreference? rankPreference;
+
+  SearchByNearbyRequest({
+    required this.locationRestriction,
+    required this.placeFields,
+    this.includedTypes,
+    this.excludedTypes,
+    this.includedPrimaryTypes,
+    this.excludedPrimaryTypes,
+    this.maxResultCount,
+    this.rankPreference,
+  });
+}
+
+class SearchByNearbyResponse {
+  List<Place?> places;
+
+  SearchByNearbyResponse(this.places);
+}
+
+enum SearchByNearbyRankPreference { DISTANCE, POPULARITY }
 
 enum BusinessStatus { OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY }
 
@@ -164,6 +198,13 @@ class LatLngBounds {
   LatLng northeast;
 
   LatLngBounds({required this.southwest, required this.northeast});
+}
+
+class CircularBounds {
+  LatLng center;
+  double radius;
+
+  CircularBounds({required this.center, required this.radius});
 }
 
 class AddressComponent {

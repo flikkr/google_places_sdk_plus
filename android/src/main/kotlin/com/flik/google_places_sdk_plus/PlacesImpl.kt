@@ -2,13 +2,15 @@ package com.flik.google_places_sdk_plus
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.CircularBounds
+import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.api.model.Place as NativePlace
 import com.google.android.libraries.places.api.net.FetchPlaceRequest as NativeFetchPlaceRequest
 import com.google.android.libraries.places.api.net.SearchByTextRequest as NativeSearchByTextRequest
-import com.google.android.libraries.places.api.model.Place as NativePlace
-import com.google.android.libraries.places.api.model.RectangularBounds
-import com.google.android.gms.maps.model.LatLng
+import com.google.android.libraries.places.api.net.SearchNearbyRequest as NativeSearchNearbyRequest
 
 class PlacesClientImpl(private val context: Context) : PlacesHostApi {
     companion object {
@@ -109,6 +111,57 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
                 }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in searchByText", e)
+            callback(Result.failure(e))
+        }
+    }
+
+
+    override fun searchByNearby(
+        request: SearchByNearbyRequest,
+        callback: (Result<SearchByNearbyResponse>) -> Unit
+    ) {
+        try {
+            val client = placesClient
+                ?: throw Exception("Places SDK is not initialized. Call initialize() first.")
+
+            val center = LatLng(
+                request.locationRestriction.center.lat,
+                request.locationRestriction.center.lng
+            )
+            val circularBounds =
+                CircularBounds.newInstance(center, request.locationRestriction.radius)
+
+            val builder = NativeSearchNearbyRequest.builder(
+                circularBounds,
+                request.placeFields.map { NativePlace.Field.valueOf(it.name) }
+            )
+
+            request.includedTypes?.let { builder.setIncludedTypes(it.filterNotNull()) }
+            request.excludedTypes?.let { builder.setExcludedTypes(it.filterNotNull()) }
+            request.includedPrimaryTypes?.let { builder.setIncludedPrimaryTypes(it.filterNotNull()) }
+            request.excludedPrimaryTypes?.let { builder.setExcludedPrimaryTypes(it.filterNotNull()) }
+            request.maxResultCount?.let { builder.setMaxResultCount(it.toInt()) }
+            request.rankPreference?.let {
+                builder.setRankPreference(
+                    NativeSearchNearbyRequest.RankPreference.valueOf(request.rankPreference.name)
+                )
+            }
+
+            client.searchNearby(builder.build())
+                .addOnSuccessListener { response ->
+                    try {
+                        callback(Result.success(SearchByNearbyResponse(response.places.map { it.toPigeon() })))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error mapping SearchByNearbyResponse to Pigeon", e)
+                        callback(Result.failure(e))
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Error searching nearby", exception)
+                    callback(Result.failure(exception))
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error in searchByNearby", e)
             callback(Result.failure(e))
         }
     }

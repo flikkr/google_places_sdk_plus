@@ -133,6 +133,39 @@ for (var prediction in response.predictions) {
 }
 ```
 
+## 📱 Example Project
+
+The `example` directory contains a complete Flutter application demonstrating all the features of the plugin.
+
+To run the example:
+
+1.  **Clone the repository** (if you haven't already).
+2.  **Navigate to the example directory**:
+    ```bash
+    cd example
+    ```
+3.  **Run the application**:
+    ```bash
+    flutter run
+    ```
+4.  **Enter your API Key** in the app's initialization card to start testing.
+
+### VS Code Launch Setup
+
+For a faster development workflow, you can use the included VS Code launch configuration to pre-populate your API key:
+
+1.  **Create a `.env.json` file** in the root directory of the project:
+    ```json
+    {
+      "GOOGLE_PLACES_API_KEY": "YOUR_API_KEY_HERE"
+    }
+    ```
+2.  In VS Code, go to the **Run and Debug** view (`Ctrl+Shift+D`).
+3.  Select **"Example with .env.json"** from the configuration dropdown.
+4.  Press **F5** to run.
+
+> Make sure your API key has the **Places API (New)** enabled in the Google Cloud Console.
+
 ## 🛠 Development
 
 ### Regenerating Pigeon Code

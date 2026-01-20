@@ -11,6 +11,7 @@ import com.google.android.libraries.places.api.model.Place as NativePlace
 import com.google.android.libraries.places.api.net.FetchPlaceRequest as NativeFetchPlaceRequest
 import com.google.android.libraries.places.api.net.SearchByTextRequest as NativeSearchByTextRequest
 import com.google.android.libraries.places.api.net.SearchNearbyRequest as NativeSearchNearbyRequest
+import com.google.android.libraries.places.api.net.FetchResolvedPhotoUriRequest as NativeFetchResolvedPhotoUriRequest
 
 class PlacesClientImpl(private val context: Context) : PlacesHostApi {
     companion object {
@@ -25,6 +26,7 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             Places.initializeWithNewPlacesApiEnabled(context, apiKey)
         }
         placesClient = Places.createClient(context)
+        PhotoMetadataCache.clear()
     }
 
     override fun fetchPlace(
@@ -162,6 +164,44 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
                 }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in searchByNearby", e)
+            callback(Result.failure(e))
+        }
+    }
+
+    override fun fetchPhoto(
+        request: FetchPhotoRequest,
+        callback: (Result<FetchPhotoResponse>) -> Unit
+    ) {
+        try {
+            val client = placesClient
+                ?: throw Exception("Places SDK is not initialized. Call initialize() first.")
+
+            val photoReference = request.photoMetadata.photoReference
+                ?: throw Exception("Photo reference is missing")
+
+            val nativePhotoMetadata = PhotoMetadataCache.get(photoReference)
+                ?: throw Exception("Photo metadata expired or invalid")
+
+            val builder = NativeFetchResolvedPhotoUriRequest.builder(nativePhotoMetadata)
+            request.maxWidth?.let { builder.setMaxWidth(it.toInt()) }
+            request.maxHeight?.let { builder.setMaxHeight(it.toInt()) }
+
+            client.fetchResolvedPhotoUri(builder.build())
+                .addOnSuccessListener { fetchPhotoResponse ->
+                    try {
+                        val uri = fetchPhotoResponse.uri
+                        callback(Result.success(FetchPhotoResponse(uri?.toString())))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing FetchPhotoResponse", e)
+                        callback(Result.failure(e))
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Error fetching photo", exception)
+                    callback(Result.failure(exception))
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error in fetchPhoto", e)
             callback(Result.failure(e))
         }
     }

@@ -24,6 +24,9 @@ abstract class PlacesHostApi {
 
   @async
   SearchByNearbyResponse searchByNearby(SearchByNearbyRequest request);
+
+  @async
+  FetchPhotoResponse fetchPhoto(FetchPhotoRequest request);
 }
 
 enum PlaceField {
@@ -120,7 +123,7 @@ class SearchByTextRequest {
   bool? strictTypeFiltering;
   LatLngBounds? locationBias;
   LatLngBounds? locationRestriction;
-  RankPreference? rankPreference;
+  SearchByTextRankPreference? rankPreference;
 
   SearchByTextRequest({
     required this.textQuery,
@@ -169,6 +172,26 @@ class SearchByNearbyResponse {
 
   SearchByNearbyResponse(this.places);
 }
+
+class FetchPhotoRequest {
+  PhotoMetadata photoMetadata;
+  int? maxWidth;
+  int? maxHeight;
+
+  FetchPhotoRequest({
+    required this.photoMetadata,
+    this.maxWidth,
+    this.maxHeight,
+  });
+}
+
+class FetchPhotoResponse {
+  String? uri;
+
+  FetchPhotoResponse(this.uri);
+}
+
+enum SearchByTextRankPreference { DISTANCE, RELEVANCE }
 
 enum SearchByNearbyRankPreference { DISTANCE, POPULARITY }
 
@@ -265,12 +288,14 @@ class PhotoMetadata {
   int height;
   String attributions;
   List<AuthorAttribution> authorAttributions;
+  String? photoReference;
 
   PhotoMetadata({
     required this.width,
     required this.height,
     required this.attributions,
     required this.authorAttributions,
+    this.photoReference,
   });
 }
 

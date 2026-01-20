@@ -155,11 +155,13 @@ fun NativeLocalTime.toPigeon(): LocalTime {
 }
 
 fun NativePhotoMetadata.toPigeon(): PhotoMetadata {
+    val key = PhotoMetadataCache.put(this)
     return PhotoMetadata(
         width = this.width.toLong(),
         height = this.height.toLong(),
         attributions = this.attributions,
-        authorAttributions = this.authorAttributions?.asList()?.map { it.toPigeon() } ?: emptyList()
+        authorAttributions = this.authorAttributions?.asList()?.map { it.toPigeon() } ?: emptyList(),
+        photoReference = key
     )
 }
 

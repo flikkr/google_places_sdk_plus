@@ -55,7 +55,7 @@ fun NativePlace.toPigeon(): Place {
         plusCode = this.plusCode?.toPigeon(),
         priceLevel = this.priceLevel?.toLong(),
         rating = this.rating,
-        reviews = this.reviews?.map { it?.toPigeon() },
+        reviews = this.reviews?.map { it.toPigeon() },
         types = this.placeTypes,
         userRatingCount = this.userRatingCount?.toLong(),
         utcOffsetMinutes = this.utcOffsetMinutes?.toLong(),
@@ -81,7 +81,7 @@ fun NativePlace.toPigeon(): Place {
         generativeSummary = this.generativeSummary?.toPigeon(),
         googleMapsLinks = this.googleMapsLinks?.toPigeon(),
         reviewSummary = this.reviewSummary?.toPigeon(),
-        subDestinations = this.subDestinations?.map { it?.toPigeon() },
+        subDestinations = this.subDestinations?.map { it.toPigeon() },
         curbsidePickup = this.curbsidePickup.name.let { BooleanPlaceAttributeValue.valueOf(it) },
         delivery = this.delivery.name.let { BooleanPlaceAttributeValue.valueOf(it) },
         dineIn = this.dineIn.name.let { BooleanPlaceAttributeValue.valueOf(it) },
@@ -138,7 +138,9 @@ fun NativePlusCode.toPigeon(): PlusCode {
 fun NativeOpeningHours.toPigeon(): OpeningHours {
     return OpeningHours(
         periods = this.periods.map { it.toPigeon() },
-        weekdayText = this.weekdayText
+        weekdayText = this.weekdayText,
+        specialDays = this.specialDays.map { SpecialDay(it.date.toString()) },
+        type = this.hoursType?.let { HoursType.valueOf(it.name) },
     )
 }
 
@@ -160,7 +162,8 @@ fun NativePhotoMetadata.toPigeon(): PhotoMetadata {
         width = this.width.toLong(),
         height = this.height.toLong(),
         attributions = this.attributions,
-        authorAttributions = this.authorAttributions?.asList()?.map { it.toPigeon() } ?: emptyList(),
+        authorAttributions = this.authorAttributions?.asList()?.map { it.toPigeon() }
+            ?: emptyList(),
         photoReference = key
     )
 }

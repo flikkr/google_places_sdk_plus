@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_places_sdk_plus/google_places_sdk_plus.dart';
-import '../components/action_input_field.dart';
+import 'package:google_places_sdk_plus_example/components/action_input_field.dart';
 
 class FetchPlaceSection extends StatefulWidget {
   final PlacesHostApi placesApi;
@@ -43,16 +43,13 @@ class _FetchPlaceSectionState extends State<FetchPlaceSection> {
         FetchPlaceRequest(
           placeId: placeId,
           placeFields: PlaceField.values, // Fetch all fields for raw response
+          sessionToken: null,
         ),
       );
 
       if (mounted) {
         setState(() => _loading = false);
-        if (response.place != null) {
-          widget.onPlaceFetched(response.place!);
-        } else {
-          widget.onError("Place not found");
-        }
+        widget.onPlaceFetched(response.place);
       }
     } catch (e) {
       if (mounted) {

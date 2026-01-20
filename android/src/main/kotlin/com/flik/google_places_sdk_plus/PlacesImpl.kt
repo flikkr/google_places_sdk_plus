@@ -6,12 +6,14 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.CircularBounds
 import com.google.android.libraries.places.api.model.RectangularBounds
-import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.api.model.AutocompletePrediction as NativeAutocompletePrediction
 import com.google.android.libraries.places.api.model.Place as NativePlace
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.api.net.FetchPlaceRequest as NativeFetchPlaceRequest
 import com.google.android.libraries.places.api.net.SearchByTextRequest as NativeSearchByTextRequest
 import com.google.android.libraries.places.api.net.SearchNearbyRequest as NativeSearchNearbyRequest
 import com.google.android.libraries.places.api.net.FetchResolvedPhotoUriRequest as NativeFetchResolvedPhotoUriRequest
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 
 class PlacesClientImpl(private val context: Context) : PlacesHostApi {
     companion object {
@@ -37,9 +39,17 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             val client = placesClient
                 ?: throw Exception("Places SDK is not initialized. Call initialize() first.")
 
-            val nativeRequest = NativeFetchPlaceRequest.newInstance(
+            val builder = NativeFetchPlaceRequest.builder(
                 request.placeId,
-                request.placeFields.map { NativePlace.Field.valueOf(it.name) })
+                request.placeFields.map { NativePlace.Field.valueOf(it.name) }
+            )
+
+            request.sessionToken?.let {
+                builder.setSessionToken(AutocompleteSessionTokenCache.getOrCreate(it))
+                AutocompleteSessionTokenCache.remove(it)
+            }
+
+            val nativeRequest = builder.build()
 
             client.fetchPlace(nativeRequest)
                 .addOnSuccessListener { response ->
@@ -78,7 +88,7 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             request.minRating?.let { builder.setMinRating(it) }
             request.isOpenNow?.let { builder.setOpenNow(it) }
             request.priceLevels?.let { levels ->
-                builder.setPriceLevels(levels.filterNotNull().map { it.toInt() })
+                builder.setPriceLevels(levels.map { it.toInt() })
             }
             request.strictTypeFiltering?.let { builder.setStrictTypeFiltering(it) }
             request.locationBias?.let {
@@ -118,9 +128,9 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
     }
 
 
-    override fun searchByNearby(
-        request: SearchByNearbyRequest,
-        callback: (Result<SearchByNearbyResponse>) -> Unit
+    override fun searchNearby(
+        request: SearchNearbyRequest,
+        callback: (Result<SearchNearbyResponse>) -> Unit
     ) {
         try {
             val client = placesClient
@@ -138,10 +148,10 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
                 request.placeFields.map { NativePlace.Field.valueOf(it.name) }
             )
 
-            request.includedTypes?.let { builder.setIncludedTypes(it.filterNotNull()) }
-            request.excludedTypes?.let { builder.setExcludedTypes(it.filterNotNull()) }
-            request.includedPrimaryTypes?.let { builder.setIncludedPrimaryTypes(it.filterNotNull()) }
-            request.excludedPrimaryTypes?.let { builder.setExcludedPrimaryTypes(it.filterNotNull()) }
+            request.includedTypes?.let { builder.setIncludedTypes(it) }
+            request.excludedTypes?.let { builder.setExcludedTypes(it) }
+            request.includedPrimaryTypes?.let { builder.setIncludedPrimaryTypes(it) }
+            request.excludedPrimaryTypes?.let { builder.setExcludedPrimaryTypes(it) }
             request.maxResultCount?.let { builder.setMaxResultCount(it.toInt()) }
             request.rankPreference?.let {
                 builder.setRankPreference(
@@ -152,9 +162,9 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             client.searchNearby(builder.build())
                 .addOnSuccessListener { response ->
                     try {
-                        callback(Result.success(SearchByNearbyResponse(response.places.map { it.toPigeon() })))
+                        callback(Result.success(SearchNearbyResponse(response.places.map { it.toPigeon() })))
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error mapping SearchByNearbyResponse to Pigeon", e)
+                        Log.e(TAG, "Error mapping SearchNearbyResponse to Pigeon", e)
                         callback(Result.failure(e))
                     }
                 }
@@ -204,5 +214,70 @@ class PlacesClientImpl(private val context: Context) : PlacesHostApi {
             Log.e(TAG, "Unexpected error in fetchPhoto", e)
             callback(Result.failure(e))
         }
+    }
+
+    override fun fetchAutocompletePredictions(
+        request: FetchAutocompletePredictionsRequest,
+        callback: (Result<FetchAutocompletePredictionsResponse>) -> Unit
+    ) {
+        try {
+            val client = placesClient
+                ?: throw Exception("Places SDK is not initialized. Call initialize() first.")
+
+            val builder = com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest.builder()
+
+            request.query?.let { builder.setQuery(it) }
+            request.countries?.let { builder.setCountries(it) }
+            request.locationBias?.let {
+                builder.setLocationBias(
+                    RectangularBounds.newInstance(
+                        LatLng(it.southwest.lat, it.southwest.lng),
+                        LatLng(it.northeast.lat, it.northeast.lng)
+                    )
+                )
+            }
+            request.locationRestriction?.let {
+                builder.setLocationRestriction(
+                    RectangularBounds.newInstance(
+                        LatLng(it.southwest.lat, it.southwest.lng),
+                        LatLng(it.northeast.lat, it.northeast.lng)
+                    )
+                )
+            }
+            request.origin?.let { builder.setOrigin(LatLng(it.lat, it.lng)) }
+            request.typesFilter?.let { builder.setTypesFilter(it) }
+            
+            val sessionToken = AutocompleteSessionTokenCache.getOrCreate(request.sessionToken)
+            builder.setSessionToken(sessionToken)
+
+            client.findAutocompletePredictions(builder.build())
+                .addOnSuccessListener { response ->
+                    try {
+                        val predictions = response.autocompletePredictions.map { it.toPigeon() }
+                        callback(Result.success(FetchAutocompletePredictionsResponse(predictions)))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error mapping FetchAutocompletePredictionsResponse", e)
+                        callback(Result.failure(e))
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Error fetching autocomplete predictions", exception)
+                    callback(Result.failure(exception))
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error in fetchAutocompletePredictions", e)
+            callback(Result.failure(e))
+        }
+    }
+
+    private fun NativeAutocompletePrediction.toPigeon(): AutocompletePrediction {
+        return AutocompletePrediction(
+            placeId = this.placeId,
+            primaryText = this.getPrimaryText(null).toString(),
+            secondaryText = this.getSecondaryText(null).toString(),
+            fullText = this.getFullText(null).toString(),
+            distanceMeters = this.distanceMeters?.toLong(),
+            placeTypes = this.types
+        )
     }
 }

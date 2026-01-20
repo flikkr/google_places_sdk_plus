@@ -23,10 +23,15 @@ abstract class PlacesHostApi {
   SearchByTextResponse searchByText(SearchByTextRequest request);
 
   @async
-  SearchByNearbyResponse searchByNearby(SearchByNearbyRequest request);
+  SearchNearbyResponse searchNearby(SearchNearbyRequest request);
 
   @async
   FetchPhotoResponse fetchPhoto(FetchPhotoRequest request);
+
+  @async
+  FetchAutocompletePredictionsResponse fetchAutocompletePredictions(
+    FetchAutocompletePredictionsRequest request,
+  );
 }
 
 enum PlaceField {
@@ -102,8 +107,13 @@ enum PlaceField {
 class FetchPlaceRequest {
   String placeId;
   List<PlaceField> placeFields;
+  String? sessionToken;
 
-  FetchPlaceRequest({required this.placeId, required this.placeFields});
+  FetchPlaceRequest({
+    required this.placeId,
+    required this.placeFields,
+    required this.sessionToken,
+  });
 }
 
 class FetchPlaceResponse {
@@ -119,7 +129,7 @@ class SearchByTextRequest {
   int? maxResultCount;
   double? minRating;
   bool? isOpenNow;
-  List<int?>? priceLevels;
+  List<int>? priceLevels;
   bool? strictTypeFiltering;
   LatLngBounds? locationBias;
   LatLngBounds? locationRestriction;
@@ -128,49 +138,62 @@ class SearchByTextRequest {
   SearchByTextRequest({
     required this.textQuery,
     required this.placeFields,
-    this.includedType,
-    this.maxResultCount,
-    this.minRating,
-    this.isOpenNow,
-    this.priceLevels,
-    this.strictTypeFiltering,
-    this.locationBias,
-    this.locationRestriction,
+    required this.includedType,
+    required this.maxResultCount,
+    required this.minRating,
+    required this.isOpenNow,
+    required this.priceLevels,
+    required this.strictTypeFiltering,
+    required this.locationBias,
+    required this.locationRestriction,
   });
 }
 
 class SearchByTextResponse {
-  List<Place?> places;
+  List<Place> places;
 
   SearchByTextResponse(this.places);
 }
 
-class SearchByNearbyRequest {
+class SearchNearbyRequest {
   CircularBounds locationRestriction;
   List<PlaceField> placeFields;
-  List<String?>? includedTypes;
-  List<String?>? excludedTypes;
-  List<String?>? includedPrimaryTypes;
-  List<String?>? excludedPrimaryTypes;
+  List<String>? includedTypes;
+  List<String>? excludedTypes;
+  List<String>? includedPrimaryTypes;
+  List<String>? excludedPrimaryTypes;
   int? maxResultCount;
-  SearchByNearbyRankPreference? rankPreference;
+  SearchNearbyRankPreference? rankPreference;
 
-  SearchByNearbyRequest({
+  SearchNearbyRequest({
     required this.locationRestriction,
     required this.placeFields,
-    this.includedTypes,
-    this.excludedTypes,
-    this.includedPrimaryTypes,
-    this.excludedPrimaryTypes,
-    this.maxResultCount,
-    this.rankPreference,
+    required this.includedTypes,
+    required this.excludedTypes,
+    required this.includedPrimaryTypes,
+    required this.excludedPrimaryTypes,
+    required this.maxResultCount,
+    required this.rankPreference,
   });
 }
 
-class SearchByNearbyResponse {
-  List<Place?> places;
+class Leg {
+  int distanceMeters;
+  int durationSeconds;
+  Leg({required this.distanceMeters, required this.durationSeconds});
+}
 
-  SearchByNearbyResponse(this.places);
+class RoutingSummary {
+  String? uri;
+  List<Leg> legs;
+  RoutingSummary({required this.uri, required this.legs});
+}
+
+class SearchNearbyResponse {
+  List<Place> places;
+  List<RoutingSummary>? routingSummary;
+
+  SearchNearbyResponse(this.places);
 }
 
 class FetchPhotoRequest {
@@ -180,8 +203,8 @@ class FetchPhotoRequest {
 
   FetchPhotoRequest({
     required this.photoMetadata,
-    this.maxWidth,
-    this.maxHeight,
+    required this.maxWidth,
+    required this.maxHeight,
   });
 }
 
@@ -191,9 +214,53 @@ class FetchPhotoResponse {
   FetchPhotoResponse(this.uri);
 }
 
+class FetchAutocompletePredictionsRequest {
+  String? query;
+  List<String>? countries;
+  LatLngBounds? locationBias;
+  LatLngBounds? locationRestriction;
+  LatLng? origin;
+  List<String>? typesFilter;
+  String? sessionToken;
+
+  FetchAutocompletePredictionsRequest({
+    required this.query,
+    required this.countries,
+    required this.locationBias,
+    required this.locationRestriction,
+    required this.origin,
+    required this.typesFilter,
+    required this.sessionToken,
+  });
+}
+
+class FetchAutocompletePredictionsResponse {
+  List<AutocompletePrediction> predictions;
+
+  FetchAutocompletePredictionsResponse(this.predictions);
+}
+
+class AutocompletePrediction {
+  String placeId;
+  String primaryText;
+  String secondaryText;
+  String fullText;
+  List<String> placeTypes;
+  int? distanceMeters;
+
+  AutocompletePrediction({
+    required this.placeId,
+    required this.primaryText,
+    required this.secondaryText,
+    required this.fullText,
+    required this.placeTypes,
+    required this.distanceMeters,
+  });
+}
+
 enum SearchByTextRankPreference { DISTANCE, RELEVANCE }
 
-enum SearchByNearbyRankPreference { DISTANCE, POPULARITY }
+enum SearchNearbyRankPreference { DISTANCE, POPULARITY }
 
 enum BusinessStatus { OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY }
 
@@ -233,7 +300,7 @@ class CircularBounds {
 class AddressComponent {
   String name;
   String shortName;
-  List<String?> types;
+  List<String> types;
 
   AddressComponent({
     required this.name,
@@ -273,14 +340,42 @@ class Period {
   TimeOfWeek? open;
   TimeOfWeek? close;
 
-  Period({this.open, this.close});
+  Period({required this.open, required this.close});
+}
+
+enum HoursType {
+  ACCESS,
+  BREAKFAST,
+  BRUNCH,
+  DELIVERY,
+  DINNER,
+  DRIVE_THROUGH,
+  HAPPY_HOUR,
+  KITCHEN,
+  LUNCH,
+  ONLINE_SERVICE_HOURS,
+  PICKUP,
+  SENIOR_HOURS,
+  TAKEOUT,
+}
+
+class SpecialDay {
+  String stringDate;
+  SpecialDay({required this.stringDate});
 }
 
 class OpeningHours {
-  List<Period?> periods;
-  List<String?> weekdayText;
+  List<Period> periods;
+  List<String> weekdayText;
+  List<SpecialDay> specialDays;
+  HoursType? type;
 
-  OpeningHours({required this.periods, required this.weekdayText});
+  OpeningHours({
+    required this.periods,
+    required this.weekdayText,
+    required this.specialDays,
+    required this.type,
+  });
 }
 
 class PhotoMetadata {
@@ -295,7 +390,7 @@ class PhotoMetadata {
     required this.height,
     required this.attributions,
     required this.authorAttributions,
-    this.photoReference,
+    required this.photoReference,
   });
 }
 
@@ -304,7 +399,11 @@ class AuthorAttribution {
   String? uri;
   String? photoUri;
 
-  AuthorAttribution({this.name, this.uri, this.photoUri});
+  AuthorAttribution({
+    required this.name,
+    required this.uri,
+    required this.photoUri,
+  });
 }
 
 class Review {
@@ -316,12 +415,12 @@ class Review {
   String? publishTime;
 
   Review({
-    this.name,
-    this.relativePublishTimeDescription,
-    this.rating,
-    this.text,
-    this.authorAttribution,
-    this.publishTime,
+    required this.name,
+    required this.relativePublishTimeDescription,
+    required this.rating,
+    required this.text,
+    required this.authorAttribution,
+    required this.publishTime,
   });
 }
 
@@ -332,10 +431,10 @@ class AccessibilityOptions {
   BooleanPlaceAttributeValue? wheelchairAccessibleParking;
 
   AccessibilityOptions({
-    this.wheelchairAccessibleEntrance,
-    this.wheelchairAccessibleRestroom,
-    this.wheelchairAccessibleSeating,
-    this.wheelchairAccessibleParking,
+    required this.wheelchairAccessibleEntrance,
+    required this.wheelchairAccessibleRestroom,
+    required this.wheelchairAccessibleSeating,
+    required this.wheelchairAccessibleParking,
   });
 }
 
@@ -349,13 +448,13 @@ class ParkingOptions {
   BooleanPlaceAttributeValue? paidGarageParking;
 
   ParkingOptions({
-    this.freeParkingLot,
-    this.paidParkingLot,
-    this.freeStreetParking,
-    this.paidStreetParking,
-    this.valetParking,
-    this.freeGarageParking,
-    this.paidGarageParking,
+    required this.freeParkingLot,
+    required this.paidParkingLot,
+    required this.freeStreetParking,
+    required this.paidStreetParking,
+    required this.valetParking,
+    required this.freeGarageParking,
+    required this.paidGarageParking,
   });
 }
 
@@ -366,10 +465,10 @@ class PaymentOptions {
   BooleanPlaceAttributeValue? acceptsNfc;
 
   PaymentOptions({
-    this.acceptsCreditCards,
-    this.acceptsDebitCards,
-    this.acceptsCashOnly,
-    this.acceptsNfc,
+    required this.acceptsCreditCards,
+    required this.acceptsDebitCards,
+    required this.acceptsCashOnly,
+    required this.acceptsNfc,
   });
 }
 
@@ -398,12 +497,12 @@ class EvChargeAmenitySummary {
 
   EvChargeAmenitySummary({
     required this.overview,
-    this.coffee,
-    this.restaurant,
-    this.store,
-    this.flagContentUri,
-    this.disclosureText,
-    this.disclosureTextLanguageCode,
+    required this.coffee,
+    required this.restaurant,
+    required this.store,
+    required this.flagContentUri,
+    required this.disclosureText,
+    required this.disclosureTextLanguageCode,
   });
 }
 
@@ -433,9 +532,9 @@ class ConnectorAggregation {
     required this.type,
     required this.maxChargeRateKw,
     required this.count,
-    this.availableCount,
-    this.outOfServiceCount,
-    this.availabilityLastUpdateTime,
+    required this.availableCount,
+    required this.outOfServiceCount,
+    required this.availabilityLastUpdateTime,
   });
 }
 
@@ -501,11 +600,11 @@ class GenerativeSummary {
   String? disclosureText;
   String? disclosureTextLanguageCode;
   GenerativeSummary({
-    this.overview,
-    this.overviewLanguageCode,
-    this.flagContentUri,
-    this.disclosureText,
-    this.disclosureTextLanguageCode,
+    required this.overview,
+    required this.overviewLanguageCode,
+    required this.flagContentUri,
+    required this.disclosureText,
+    required this.disclosureTextLanguageCode,
   });
 }
 
@@ -516,11 +615,11 @@ class GoogleMapsLinks {
   String? reviewsUri;
   String? photosUri;
   GoogleMapsLinks({
-    this.directionsUri,
-    this.placeUri,
-    this.writeAReviewUri,
-    this.reviewsUri,
-    this.photosUri,
+    required this.directionsUri,
+    required this.placeUri,
+    required this.writeAReviewUri,
+    required this.reviewsUri,
+    required this.photosUri,
   });
 }
 
@@ -533,19 +632,19 @@ class ReviewSummary {
   String? textLanguageCode;
 
   ReviewSummary({
-    this.disclosureText,
-    this.disclosureTextLanguageCode,
-    this.flagContentUri,
-    this.reviewsUri,
-    this.text,
-    this.textLanguageCode,
+    required this.disclosureText,
+    required this.disclosureTextLanguageCode,
+    required this.flagContentUri,
+    required this.reviewsUri,
+    required this.text,
+    required this.textLanguageCode,
   });
 }
 
 class SubDestination {
   String? name;
   String? id;
-  SubDestination({this.name, this.id});
+  SubDestination({required this.name, required this.id});
 }
 
 class Place {
@@ -571,8 +670,8 @@ class Place {
   PlusCode? plusCode;
   int? priceLevel;
   double? rating;
-  List<Review?>? reviews;
-  List<String?>? types;
+  List<Review>? reviews;
+  List<String>? types;
   int? userRatingCount;
   int? utcOffsetMinutes;
   LatLngBounds? viewport;
@@ -592,7 +691,7 @@ class Place {
   GenerativeSummary? generativeSummary;
   GoogleMapsLinks? googleMapsLinks;
   ReviewSummary? reviewSummary;
-  List<SubDestination?>? subDestinations;
+  List<SubDestination>? subDestinations;
 
   // Boolean Attribute Values
   BooleanPlaceAttributeValue? curbsidePickup;

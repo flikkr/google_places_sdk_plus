@@ -45,7 +45,7 @@ class _NearbySearchSectionState extends State<NearbySearchSection> {
       final lng = double.parse(_nearbyLngController.text);
       final radius = double.parse(_nearbyRadiusController.text);
 
-      final request = SearchByNearbyRequest(
+      final request = SearchNearbyRequest(
         locationRestriction: CircularBounds(
           center: LatLng(lat: lat, lng: lng),
           radius: radius,
@@ -64,7 +64,7 @@ class _NearbySearchSectionState extends State<NearbySearchSection> {
         ],
       );
 
-      final response = await widget.placesApi.searchByNearby(request);
+      final response = await widget.placesApi.searchNearby(request);
 
       if (mounted) {
         widget.onPlacesFound(response.places.whereType<Place>().toList());

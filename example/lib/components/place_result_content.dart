@@ -15,7 +15,10 @@ class PlaceResultContent extends StatefulWidget {
     this.error,
     required this.scrollController,
     this.placesApi,
+    this.sessionToken,
   });
+
+  final String? sessionToken;
 
   @override
   State<PlaceResultContent> createState() => _PlaceResultContentState();
@@ -100,6 +103,17 @@ class _PlaceResultContentState extends State<PlaceResultContent> {
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
+        if (widget.sessionToken != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Session: ${widget.sessionToken}',
+            style: TextStyle(
+              fontSize: 10,
+              fontFamily: 'monospace',
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
         if (widget.place?.photoMetadatas?.isNotEmpty == true) ...[
           const SizedBox(height: 16),
           SizedBox(

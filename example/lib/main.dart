@@ -9,6 +9,8 @@ import 'features/fetch_place_section.dart';
 import 'features/nearby_search_section.dart';
 import 'components/place_result_content.dart';
 import 'components/place_list_sheet.dart';
+import 'components/prediction_list_sheet.dart';
+import 'features/autocomplete_section.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,7 +43,11 @@ class _HomePageState extends State<HomePage> {
   final _places = PlacesHostApi();
   bool _initialized = false;
 
-  void _showPlacesBottomSheet({required List<Place?> places, String? error}) {
+  void _showPlacesBottomSheet({
+    required List<Place?> places,
+    String? error,
+    String? sessionToken,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -61,13 +67,17 @@ class _HomePageState extends State<HomePage> {
                 error: error,
                 scrollController: scrollController,
                 placesApi: _places,
+                sessionToken: sessionToken,
               )
             : PlaceListSheet(
                 places: places,
                 scrollController: scrollController,
                 onPlaceSelected: (selected) {
                   Navigator.pop(context);
-                  _showPlacesBottomSheet(places: [selected]);
+                  _showPlacesBottomSheet(
+                    places: [selected],
+                    sessionToken: sessionToken,
+                  );
                 },
               ),
       ),
@@ -91,6 +101,38 @@ class _HomePageState extends State<HomePage> {
         maxChildSize: 0.9,
         expand: false,
         builder: builder,
+      ),
+    );
+  }
+
+  void _showPredictionsBottomSheet(
+    List<AutocompletePrediction> predictions,
+    String? sessionToken,
+  ) {
+    _showResultsBottomSheet(
+      (context, scrollController) => PredictionListSheet(
+        predictions: predictions,
+        scrollController: scrollController,
+        sessionToken: sessionToken,
+        onPredictionSelected: (prediction) async {
+          Navigator.pop(context);
+          // Auto-fetch details for the selected prediction
+          try {
+            final response = await _places.fetchPlace(
+              FetchPlaceRequest(
+                placeId: prediction.placeId,
+                placeFields: PlaceField.values,
+                sessionToken: sessionToken,
+              ),
+            );
+            _showPlacesBottomSheet(
+              places: [response.place],
+              sessionToken: sessionToken,
+            );
+          } catch (e) {
+            _onError(e.toString());
+          }
+        },
       ),
     );
   }
@@ -177,10 +219,10 @@ class _HomePageState extends State<HomePage> {
               onPlacesFound: (places) => _showPlacesBottomSheet(places: places),
               onError: _onError,
             ),
-            NearbySearchSection(
+            AutocompleteSection(
               placesApi: _places,
               isEnabled: _initialized,
-              onPlacesFound: (places) => _showPlacesBottomSheet(places: places),
+              onPredictionsFound: _showPredictionsBottomSheet,
               onError: _onError,
             ),
           ],
